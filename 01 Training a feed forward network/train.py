@@ -67,7 +67,7 @@ def train_one_epoch(model, data_loader, loss_fn, optimiser, device):
 def train(model, data_loader, loss_fn, optimiser, device, epochs):
     for i in range(epochs):
         print(f"Epoch {i+1}")
-        train_one_epoch(model, data_loader, loss_fn, optimiser, device, epochs)
+        train_one_epoch(model, data_loader, loss_fn, optimiser, device)
         print("--------------------")
     print("Training complete.")
 
@@ -92,4 +92,8 @@ if __name__ == "__main__":
     optimiser = torch.optim.Adam(feed_forward_net.parameters(), lr=LEARNING_RATE)
 
     # training model
-    train(feed_forward_net, train_data_loader, loss_fun, optimiser, device, EPOCHS)
+    train(feed_forward_net, train_data_loader, loss_fn, optimiser, device, EPOCHS)
+
+    # saving model
+    torch.save(feed_forward_net.state_dict(), "feedforwardnet.pth")
+    print("Model trained and stored at feedforwardnet.pth")
