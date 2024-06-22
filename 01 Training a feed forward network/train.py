@@ -13,14 +13,23 @@ from torchvision.transforms import ToTensor
 # constants
 BATCH_SIZE = 128
 
-# class FeedForwardNet(nn.Module):
+class FeedForwardNet(nn.Module):
 
-#     def __init__(self):
-#         super().__init__()
-#         self.flatten = nn.Flatten()
-#         self.dense_layers = nn.Sequential(
-#             nn.Linear()
-#         )
+    def __init__(self):
+        super().__init__()
+        self.flatten = nn.Flatten()
+        self.dense_layers = nn.Sequential(
+            nn.Linear(28*28, 256),      # input layer
+            nn.ReLU(),                  # Rectified linear unit
+            nn.Linear(256, 10)          # output layer
+        )
+        self.softmax = nn.Softmax(dim=1)
+
+    def forward(self, input_data):
+        flattened_data = self.flatten(input_data)
+        logits = self.dense_layers(flattened_data)
+        predictions = self.softmax(logits)
+        return predictions
 
 # download datasets
 def download_mnist_datasets():
@@ -46,3 +55,9 @@ if __name__ == "__main__":
     train_data_loader = DataLoader(train_data, batch_size=BATCH_SIZE)
 
     # building model
+    if torch.cuda.is_available():
+        device = "cuda"
+    else:
+        device = "cpu"
+    print(f"Using {device} device")
+    feed_forward_net = FeedForwardNet().to(device)
