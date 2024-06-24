@@ -25,10 +25,12 @@ class UrbanSoundDataset(Dataset):
                  audio_dir, 
                  transformation, 
                  target_sample_rate,
-                 num_samples):
+                 num_samples,
+                 device):
         self.annotations = pd.read_csv(annotations_file)
         self.audio_dir = audio_dir
-        self.transformation = transformation
+        self.device = device
+        self.transformation = transformation.to(self.device)
         self.target_sample_rate = target_sample_rate
         self.num_samples = num_samples
 
@@ -43,6 +45,7 @@ class UrbanSoundDataset(Dataset):
         # signal - waveform/timeseries of audio file
         # sr - sample rate
         signal, sr = torchaudio.load(audio_sample_path)
+        signal = signal.to(self.device)
 
         # mixing signal down to mono and resampling
         signal = self._mix_down(signal)
@@ -102,13 +105,20 @@ if __name__ == "__main__":
         hop_length=512,
         n_mels=64
     )
+
+    if torch.cuda.is_available():
+        device = "cuda"
+    else:
+        device = "cpu"
+    print(f"Using device: {device}")
     
     usd = UrbanSoundDataset(
         ANNOTATIONS_FILE, 
         AUDIO_DIR, 
         mel_spectrogram,
         SAMPLE_RATE,
-        NUM_SAMPLES
+        NUM_SAMPLES,
+        device
     )
     print(f"There are {len(usd)} samples in the dataset.")
     signal, label = usd[1]
