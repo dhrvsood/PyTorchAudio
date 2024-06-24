@@ -13,18 +13,24 @@ except ImportError:
 # constants
 ANNOTATIONS_FILE = getattr(config, 'ANNOTATIONS_FILE', None)
 AUDIO_DIR = getattr(config, 'AUDIO_DIR', None)
-SAMPLE_RATE = 16000
+SAMPLE_RATE = 22050
+NUM_SAMPLES = 22050
 
 print(f"Annotations Path: {ANNOTATIONS_FILE}")
 print(f"Audio Directory: {AUDIO_DIR}")
 
 class UrbanSoundDataset(Dataset):
-    def __init__(self, annotations_file, audio_dir, transformation, 
-                 target_sample_rate):
+    def __init__(self, 
+                 annotations_file, 
+                 audio_dir, 
+                 transformation, 
+                 target_sample_rate,
+                 num_samples):
         self.annotations = pd.read_csv(annotations_file)
         self.audio_dir = audio_dir
         self.transformation = transformation
         self.target_sample_rate = target_sample_rate
+        self.num_samples = num_samples
 
     def __len__(self):
         return len(self.annotations)
@@ -39,9 +45,12 @@ class UrbanSoundDataset(Dataset):
         signal, sr = torchaudio.load(audio_sample_path)
 
         # mixing signal down to mono and resampling
-        signal = self._mix_down_if_necessary(signal)
-        signal = self._resample_if_necessary(signal, sr)
+        signal = self._mix_down(signal)
+        signal = self._resample(signal, sr)
         
+        # cut or right pad signal to 1s (22050 samples)
+        signal = self._adjust_length(signal)
+
         # transform waveform into Mel Spectrogram
         signal = self.transformation(signal)
         return signal, label
@@ -49,13 +58,27 @@ class UrbanSoundDataset(Dataset):
     """
     Private methods
     """
-    def _resample_if_necessary(self, signal, sr):
+    def _adjust_length(self, signal):
+        length_signal = signal.shape[1]
+        
+        # cutting 
+        if length_signal > self.num_samples:
+            signal = signal[:, :self.num_samples]
+        
+        # right padding
+        elif length_signal < self.num_samples:
+            num_missing_samples = self.num_samples - length_signal
+            signal = torch.nn.functional.pad(signal, (0, num_missing_samples))
+        
+        return signal
+
+    def _resample(self, signal, sr):
         if sr != self.target_sample_rate:
             resampler = torchaudio.transforms.Resample(sr, self.target_sample_rate)
             signal = resampler(signal)
         return signal
     
-    def _mix_down_if_necessary(self, signal):
+    def _mix_down(self, signal):
         # signal -> (num_channels, samples) -> (2, 16000) -> (1, 16000)
         if signal.shape[0] > 1:
             signal = torch.mean(signal, dim=0, keepdim=True)
@@ -84,8 +107,9 @@ if __name__ == "__main__":
         ANNOTATIONS_FILE, 
         AUDIO_DIR, 
         mel_spectrogram,
-        SAMPLE_RATE
+        SAMPLE_RATE,
+        NUM_SAMPLES
     )
     print(f"There are {len(usd)} samples in the dataset.")
-    signal, label = usd[0]
+    signal, label = usd[1]
     print(signal)
