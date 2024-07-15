@@ -55,11 +55,22 @@ if __name__ == "__main__":
     )
 
     # 3. get sample from urban sound dataset for inference 
-    input, target = usd[0][0], usd[0][1]    # currently 3d [num_channels, fr_axis, time_axis]
+    # input, target = usd[1][0], usd[1][1]    # currently 3d [num_channels, fr_axis, time_axis]
+    # input, target = usd[1]
+    # print("INPUT:", input[0][0], input[0][1])
+    # print("TARGET:", target)
     # needs 4 dimension - batch_size
-    input.unsqueeze_(0)
+    # input.unsqueeze_(0)
+    # print(input)
+    accurate = 0
+    for i in range(0, len(usd)):
+        input, target = usd[i]
+        input.unsqueeze_(0)
+        # 4. make an inference 
+        predicted, expected = predict(cnn, input, target, class_mapping)
 
-    # 4. make an inference 
-    predicted, expected = predict(cnn, input, target, class_mapping)
-
-    print(f"Predicted: {predicted}, Expected: '{expected}'")
+        print(f"Predicted: {predicted}, Expected: '{expected}'")
+        if predicted == expected: accurate += 1
+    
+    print(f"Accuracy: {float(accurate/len(usd) * 100)}%")
+    
